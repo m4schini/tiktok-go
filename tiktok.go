@@ -33,6 +33,7 @@ const (
 	selPostShareCount   = "[data-e2e=\"share-count\"]"
 	selPostDescription  = "[data-e2e=\"video-desc\"]"
 	selPostAudio        = "[data-e2e=\"video-music\"]"
+	selPostTimestamp    = "[data-e2e=\"browser-nickname\"]"
 
 	userAgent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/96.0.4664.110 Safari/537.36"
 	referer   = "https://www.tiktok.com/"
@@ -193,9 +194,10 @@ func GetAccountByUsername(scr Scraper, username string) (*Account, error) {
 }
 
 type Video struct {
-	URL      string
-	ID       string
-	Username string
+	URL       string
+	ID        string
+	Username  string
+	Timestamp string
 
 	ViewCount       int
 	LikeCount       int
@@ -226,7 +228,6 @@ func (p Video) String() string {
 func (p Video) GetMentions() []string {
 	r := regexp.MustCompile(`/@[^/"]+`)
 	matches := r.FindAllString(p.DescriptionHTML, -1)
-	log.Printf("Found Mentions: %s\n", matches)
 
 	return matches
 }
@@ -234,7 +235,6 @@ func (p Video) GetMentions() []string {
 func (p Video) GetTags() []string {
 	r := regexp.MustCompile(`/tag/\w+`)
 	matches := r.FindAllString(p.DescriptionHTML, -1)
-	log.Printf("Found Tags: %#v\n", matches)
 
 	return matches
 }
@@ -296,12 +296,6 @@ func GetVideoByUrl(scr Scraper, url string) (*Video, error) {
 	if err != nil {
 		return nil, err
 	}
-
-	log.Println("Likes:", post.LikeCount)
-	log.Println("Comments:", post.CommentCount)
-	log.Println("Shares:", post.ShareCount)
-	log.Println("Description:", post.Description)
-	log.Println("Audio:", post.Audio)
 
 	return &post, nil
 }

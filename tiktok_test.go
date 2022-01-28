@@ -21,3 +21,14 @@ func TestGetAccountByUsername(t *testing.T) {
 		t.Fail()
 	}
 }
+
+func TestGetVideoByUrl(t *testing.T) {
+	scr, err := NewScraper()
+	if err != nil {
+		t.Log(err)
+		t.Fail()
+	}
+
+	v, err := GetVideoByUrl(scr, "https://www.tiktok.com/@krawallklara/video/7021545676710432006")
+	t.Log(v)
+}

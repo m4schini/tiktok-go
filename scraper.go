@@ -203,20 +203,6 @@ func (c *chromedpScraper) ScrollDown(url string) error {
 	var x string
 	err = chromedp.Run(c.ctx,
 		chromedp.EvaluateAsDevTools("window.scrollBy(0,5000)", &x),
-		//chromedp.EvaluateAsDevTools("window.scrollBy(0,5000)", &x),
-		//chromedp.EvaluateAsDevTools("window.scrollBy(0,5000)", &x),
-		//chromedp.EvaluateAsDevTools("window.scrollBy(0,5000)", &x),
-		//chromedp.EvaluateAsDevTools("window.scrollBy(0,5000)", &x),
-		//chromedp.EvaluateAsDevTools("window.scrollBy(0,5000)", &x),
-		//chromedp.EvaluateAsDevTools("window.scrollBy(0,5000)", &x),
-		//chromedp.EvaluateAsDevTools("window.scrollBy(0,5000)", &x),
-		//chromedp.EvaluateAsDevTools("window.scrollBy(0,5000)", &x),
-		//chromedp.EvaluateAsDevTools("window.scrollBy(0,5000)", &x),
-		//chromedp.EvaluateAsDevTools("window.scrollBy(0,5000)", &x),
-		//chromedp.EvaluateAsDevTools("window.scrollBy(0,5000)", &x),
-		//chromedp.EvaluateAsDevTools("window.scrollBy(0,5000)", &x),
-		//chromedp.EvaluateAsDevTools("window.scrollBy(0,5000)", &x),
-		//chromedp.EvaluateAsDevTools("window.scrollBy(0,5000)", &x),
 	)
 	if err != nil {
 		return err
