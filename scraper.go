@@ -43,13 +43,15 @@ type GoqueryScraper interface {
 func GetRemoteDebugURL(host string) string {
 	resp, err := http.Get(fmt.Sprintf("http://%s:9222/json/version", host))
 	if err != nil {
-		log.Fatal(err)
+		log.Println(err)
+		return ""
 	}
 
 	var result map[string]interface{}
 
 	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
-		log.Fatal(err)
+		log.Println(err)
+		return ""
 	}
 
 	return result["webSocketDebuggerUrl"].(string)
