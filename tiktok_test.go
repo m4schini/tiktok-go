@@ -2,27 +2,30 @@ package tiktok_go
 
 import "testing"
 
-func TestGetAccountByUsername(t *testing.T) {
+func TestGetAccountByUsername_chromedp(t *testing.T) {
 	scr, err := NewScraper()
 	if err != nil {
 		t.Log(err)
 		t.Fail()
 	}
 
-	_, err = GetAccountByUsername(scr, "fabiola.baglieri")
+	acc, err := GetAccountByUsername(scr, "fabiola.baglieri")
 	if err != nil {
 		t.Log("err wasn't expected")
 		t.Fail()
 	}
+	t.Log(acc)
 
-	_, err = GetAccountByUsername(scr, "sdmlpfsdpgmpm")
+	acc, err = GetAccountByUsername(scr, "sdmlpfsdpgmpm")
 	if err == nil {
 		t.Log("err was expected")
 		t.Fail()
 	}
+	t.Log(acc)
+
 }
 
-func TestGetVideoByUrl(t *testing.T) {
+func TestGetVideoByUrl_chromedp(t *testing.T) {
 	scr, err := NewScraper()
 	if err != nil {
 		t.Log(err)
@@ -31,4 +34,26 @@ func TestGetVideoByUrl(t *testing.T) {
 
 	v, err := GetVideoByUrl(scr, "https://www.tiktok.com/@krawallklara/video/7021545676710432006")
 	t.Log(v)
+}
+
+func TestGetAccountByUsername_getter(t *testing.T) {
+	scr, err := NewGetter()
+	if err != nil {
+		t.Log(err)
+		t.Fail()
+	}
+
+	acc, err := GetAccountByUsername(scr, "fabiola.baglieri")
+	if err != nil {
+		t.Log("err wasn't expected")
+		t.Fail()
+	}
+	t.Log(acc)
+
+	acc, err = GetAccountByUsername(scr, "sdmlpfsdpgmpm")
+	if err == nil {
+		t.Log("err was expected")
+		t.Fail()
+	}
+	t.Log(acc)
 }

@@ -35,6 +35,7 @@ type ChromeScraper interface {
 	Nodes(url string, sel interface{}) ([]*cdp.Node, error)
 }
 
+//GoqueryScraper DEPRECATED
 type GoqueryScraper interface {
 	Scraper
 	Nodes(url string, sel interface{}) ([]*goquery.Selection, error)
@@ -240,100 +241,4 @@ func (c *chromedpScraper) Nodes(url string, sel interface{}) ([]*goquery.Selecti
 
 func (c *chromedpScraper) Close() {
 	c.close()
-}
-
-type getter struct {
-	currentDoc *goquery.Document
-	currentUrl string
-}
-
-func NewGetter() (Scraper, error) {
-	return &getter{}, nil
-}
-
-func (g *getter) setLocation(location string) (bool, error) {
-	if g.currentUrl != location {
-
-		client := &http.Client{}
-		req, err := http.NewRequest("GET", location, nil)
-		req.Header.Set("User-Agent", userAgent)
-		req.Header.Set("Referer", referer)
-		if err != nil {
-			return false, err
-		}
-
-		res, err := client.Do(req)
-		if err != nil {
-			return false, err
-		}
-
-		// Load the HTML document
-		doc, err := goquery.NewDocumentFromReader(res.Body)
-		if err != nil {
-			log.Fatal(err)
-		}
-
-		g.currentDoc = doc
-		g.currentUrl = location
-		return true, nil
-	} else {
-		return false, nil
-	}
-}
-
-func (g *getter) Text(url string, selector interface{}) (string, error) {
-	_, err := g.setLocation(url)
-	if err != nil {
-		return "", err
-	}
-
-	sel, ok := selector.(string)
-	if !ok {
-		return "", errors.New("selector must be type string")
-	}
-
-	f := g.currentDoc.Find(sel).First()
-	return f.Text(), nil
-}
-
-func (g *getter) InnerHTML(url string, selector interface{}) (string, error) {
-	_, err := g.setLocation(url)
-	if err != nil {
-		return "", err
-	}
-
-	sel, ok := selector.(string)
-	if !ok {
-		return "", errors.New("selector must be type string")
-	}
-
-	f, err := g.currentDoc.Find(sel).First().Html()
-	if err != nil {
-		return "", err
-	}
-	return f, nil
-}
-
-func (g *getter) Number(url string, selector interface{}) (int, error) {
-	//TODO implement me
-	panic("implement me")
-}
-
-func (g *getter) Contains(url string, selector interface{}, text string) (bool, error) {
-	//TODO implement me
-	panic("implement me")
-}
-
-func (g *getter) ScrollDown(url string) error {
-	//TODO implement me
-	panic("implement me")
-}
-
-func (g *getter) HTML(url string) (string, error) {
-	//TODO implement me
-	panic("implement me")
-}
-
-func (g *getter) Close() {
-
 }
