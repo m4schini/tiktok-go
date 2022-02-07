@@ -157,8 +157,8 @@ func (g *getter) Number(url string, selector interface{}) (int, error) {
 }
 
 func (g *getter) Contains(url string, selector interface{}, text string) (bool, error) {
-	//TODO implement me
-	panic("implement me")
+	// always returns false
+	return false, nil
 }
 
 func (g *getter) HTML(url string) (string, error) {
@@ -176,11 +176,9 @@ func (g *getter) HTML(url string) (string, error) {
 }
 
 func (g *getter) ScrollDown(url string) error {
-	//TODO implement me
-	panic("implement me")
+	return nil
 }
 
 func (g *getter) Close() {
-	//TODO implement me
-	panic("implement me")
+	// useless
 }
