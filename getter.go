@@ -27,7 +27,7 @@ func NewGetter() (*getter, error) {
 	// Create a transport that uses Tor Browser's SocksPort.  If
 	// talking to a system tor, this may be an AF_UNIX socket, or
 	// 127.0.0.1:9050 instead.
-	tbProxyURL, err := url.Parse("socks5://127.0.0.1:9150")
+	tbProxyURL, err := url.Parse("socks5://127.0.0.1:9050")
 	if err != nil {
 		return nil, err
 	}

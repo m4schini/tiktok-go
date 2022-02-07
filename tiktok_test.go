@@ -45,7 +45,7 @@ func TestGetAccountByUsername_getter(t *testing.T) {
 
 	acc, err := GetAccountByUsername(scr, "fabiola.baglieri")
 	if err != nil {
-		t.Log("err wasn't expected")
+		t.Log("err wasn't expected:", err)
 		t.Fail()
 	}
 	t.Log(acc)
