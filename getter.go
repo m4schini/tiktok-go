@@ -1,10 +1,12 @@
 package tiktok_go
 
 import (
+	"bufio"
 	"errors"
 	"fmt"
 	"github.com/PuerkitoBio/goquery"
 	"golang.org/x/net/proxy"
+	"log"
 	"net"
 	"net/http"
 	"net/url"
@@ -16,6 +18,11 @@ const (
 )
 
 type getter struct {
+	tor struct {
+		active bool
+		host   string
+		port   int
+	}
 	client   *http.Client
 	location struct {
 		url string
@@ -27,15 +34,16 @@ func NewGetter() (*getter, error) {
 	newGetter := getter{
 		client: http.DefaultClient,
 	}
+	newGetter.tor.active = false
 
 	return &newGetter, nil
 }
 
-func NewTorGetter(port string) (*getter, error) {
+func NewTorGetter(host string, port int) (*getter, error) {
 	// Create a transport that uses Tor Browser's SocksPort.  If
 	// talking to a system tor, this may be an AF_UNIX socket, or
 	// 127.0.0.1:9050 instead.
-	tbProxyURL, err := url.Parse("socks5://127.0.0.1:" + port)
+	tbProxyURL, err := url.Parse(fmt.Sprintf("socks5://%s:%d", host, port))
 	if err != nil {
 		return nil, err
 	}
@@ -65,6 +73,9 @@ func NewTorGetter(port string) (*getter, error) {
 	newGetter := getter{
 		client: client,
 	}
+	newGetter.tor.active = true
+	newGetter.tor.host = host
+	newGetter.tor.port = port
 
 	return &newGetter, nil
 }
@@ -180,5 +191,16 @@ func (g *getter) ScrollDown(url string) error {
 }
 
 func (g *getter) Close() {
-	// useless
+	if g.tor.active {
+		conn, err := net.Dial("tcp", fmt.Sprintf("%s:%d", g.tor.host, g.tor.port+1))
+		if err == nil {
+			log.Println("MAKING NEW TOR CIRCUIT")
+			fmt.Fprintf(conn, "AUTHENTICATE \"password\"\n")
+			message, _ := bufio.NewReader(conn).ReadString('\n')
+			log.Println(message)
+			fmt.Fprintf(conn, "NEWNYM\n")
+			message, _ = bufio.NewReader(conn).ReadString('\n')
+			log.Println(message)
+		}
+	}
 }
