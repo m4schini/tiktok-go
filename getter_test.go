@@ -6,7 +6,7 @@ import (
 )
 
 func TestGetter_Text(t *testing.T) {
-	getter, err := NewGetter()
+	getter, err := NewTorGetter()
 	if err != nil {
 		t.Log(err)
 		t.Fail()

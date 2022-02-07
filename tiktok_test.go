@@ -37,7 +37,7 @@ func TestGetVideoByUrl_chromedp(t *testing.T) {
 }
 
 func TestGetAccountByUsername_getter(t *testing.T) {
-	scr, err := NewGetter()
+	scr, err := NewTorGetter()
 	if err != nil {
 		t.Log(err)
 		t.Fail()

@@ -24,10 +24,18 @@ type getter struct {
 }
 
 func NewGetter() (*getter, error) {
+	newGetter := getter{
+		client: http.DefaultClient,
+	}
+
+	return &newGetter, nil
+}
+
+func NewTorGetter(port string) (*getter, error) {
 	// Create a transport that uses Tor Browser's SocksPort.  If
 	// talking to a system tor, this may be an AF_UNIX socket, or
 	// 127.0.0.1:9050 instead.
-	tbProxyURL, err := url.Parse("socks5://127.0.0.1:9050")
+	tbProxyURL, err := url.Parse("socks5://127.0.0.1:" + port)
 	if err != nil {
 		return nil, err
 	}
