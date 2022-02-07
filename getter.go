@@ -32,7 +32,7 @@ type getter struct {
 
 func NewGetter() (*getter, error) {
 	newGetter := getter{
-		client: http.DefaultClient,
+		client: &http.Client{},
 	}
 	newGetter.tor.active = false
 
@@ -99,6 +99,7 @@ func (g *getter) getDoc(url string) (*goquery.Document, error) {
 	req.Header.Set("referer", referer)
 
 	resp, err := g.client.Get(url)
+	log.Printf("[HTTP REQ] %d <= %s\n", resp.StatusCode, url)
 	if err != nil {
 		return nil, err
 	}
