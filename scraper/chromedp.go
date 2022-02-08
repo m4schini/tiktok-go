@@ -1,45 +1,17 @@
-package tiktok_go
+package scraper
 
 import (
 	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/chromedp/cdproto/cdp"
+	"github.com/PuerkitoBio/goquery"
+	"github.com/chromedp/chromedp"
 	"log"
 	"net/http"
 	"strconv"
 	"strings"
-	"time"
-
-	"github.com/PuerkitoBio/goquery"
-	"github.com/chromedp/chromedp"
 )
-
-const (
-	scraperContextTimeout = 20 * time.Second
-)
-
-type Scraper interface {
-	Text(url string, selector interface{}) (string, error)
-	InnerHTML(url string, selector interface{}) (string, error)
-	Number(url string, selector interface{}) (int, error)
-	Contains(url string, selector interface{}, text string) (bool, error)
-	HTML(url string) (string, error)
-	ScrollDown(url string) error
-	Close()
-}
-
-type ChromeScraper interface {
-	Scraper
-	Nodes(url string, sel interface{}) ([]*cdp.Node, error)
-}
-
-//GoqueryScraper DEPRECATED
-type GoqueryScraper interface {
-	Scraper
-	Nodes(url string, sel interface{}) ([]*goquery.Selection, error)
-}
 
 func GetRemoteDebugURL(host string) string {
 	resp, err := http.Get(fmt.Sprintf("http://%s:9222/json/version", host))
@@ -58,6 +30,12 @@ func GetRemoteDebugURL(host string) string {
 	return result["webSocketDebuggerUrl"].(string)
 }
 
+type ChromedpScraper interface {
+	Scraper
+	Screenshot(url string) []byte
+	ScreenshotElement(url string, selector interface{}) []byte
+}
+
 type chromedpScraper struct {
 	ctx             context.Context
 	close           func()
@@ -65,7 +43,7 @@ type chromedpScraper struct {
 	currentLocation string
 }
 
-func NewScraper() (*chromedpScraper, error) {
+func NewChromedpScraper() (*chromedpScraper, error) {
 	allocCtx, _ := chromedp.NewContext(
 		context.Background(),
 		chromedp.WithLogf(log.Printf),
@@ -79,7 +57,7 @@ func NewScraper() (*chromedpScraper, error) {
 	}, nil
 }
 
-func NewRemoteScraper(chromedpHost string) (*chromedpScraper, error) {
+func NewRemoteChromedpScraper(chromedpHost string) (*chromedpScraper, error) {
 	allocCtx, _ := chromedp.NewRemoteAllocator(
 		context.Background(),
 		GetRemoteDebugURL(chromedpHost),
@@ -164,19 +142,6 @@ func (c *chromedpScraper) Number(url string, selector interface{}) (int, error) 
 	return i, nil
 }
 
-func (c *chromedpScraper) Contains(url string, selector interface{}, expect string) (bool, error) {
-	actual, err := c.Text(url, selector)
-	if err != nil {
-		return false, err
-	}
-
-	if actual == expect {
-		return true, nil
-	} else {
-		return false, nil
-	}
-}
-
 func (c *chromedpScraper) HTML(url string) (string, error) {
 	_, err := c.setLocation(url)
 	if err != nil {
@@ -193,23 +158,6 @@ func (c *chromedpScraper) HTML(url string) (string, error) {
 	}
 
 	return out, nil
-}
-
-func (c *chromedpScraper) ScrollDown(url string) error {
-	_, err := c.setLocation(url)
-	if err != nil {
-		return err
-	}
-
-	var x string
-	err = chromedp.Run(c.ctx,
-		chromedp.EvaluateAsDevTools("window.scrollBy(0,5000)", &x),
-	)
-	if err != nil {
-		return err
-	}
-
-	return nil
 }
 
 func (c *chromedpScraper) Nodes(url string, sel interface{}) ([]*goquery.Selection, error) {
@@ -241,4 +189,46 @@ func (c *chromedpScraper) Nodes(url string, sel interface{}) ([]*goquery.Selecti
 
 func (c *chromedpScraper) Close() {
 	c.close()
+}
+
+func (c *chromedpScraper) Screenshot(url string) ([]byte, error) {
+	_, err := c.setLocation(url)
+	if err != nil {
+		return nil, err
+	}
+	var buffer []byte
+
+	if err := chromedp.Run(c.ctx, chromedp.FullScreenshot(&buffer, 100)); err != nil {
+		return nil, err
+	}
+
+	return buffer, nil
+}
+
+func (c *chromedpScraper) ScreenshotElement(url string, selector interface{}) ([]byte, error) {
+	_, err := c.setLocation(url)
+	if err != nil {
+		return nil, err
+	}
+	var buffer []byte
+
+	if err := chromedp.Run(c.ctx, chromedp.Screenshot(selector, &buffer)); err != nil {
+		return nil, err
+	}
+
+	return buffer, nil
+}
+
+//TODO
+func (c *chromedpScraper) Login(username, password string) error {
+	_, err := c.setLocation("https://www.tiktok.com/")
+	if err != nil {
+		return err
+	}
+
+	chromedp.Run(c.ctx,
+		chromedp.Click("[data-e2e=\"top-login-button\"]"),
+	)
+
+	return nil
 }
