@@ -1,9 +1,12 @@
 package tiktok_go
 
-import "testing"
+import (
+	"github.com/m4schini/tiktok-go/scraper"
+	"testing"
+)
 
 func TestGetAccountByUsername_chromedp(t *testing.T) {
-	scr, err := NewScraper()
+	scr, err := scraper.NewChromedpScraper()
 	if err != nil {
 		t.Log(err)
 		t.Fail()
@@ -26,7 +29,7 @@ func TestGetAccountByUsername_chromedp(t *testing.T) {
 }
 
 func TestGetVideoByUrl_chromedp(t *testing.T) {
-	scr, err := NewScraper()
+	scr, err := scraper.NewChromedpScraper()
 	if err != nil {
 		t.Log(err)
 		t.Fail()
@@ -37,7 +40,7 @@ func TestGetVideoByUrl_chromedp(t *testing.T) {
 }
 
 func TestGetAccountByUsername_getter(t *testing.T) {
-	scr, err := NewGetter()
+	scr, err := scraper.NewTorScraper()
 	if err != nil {
 		t.Log(err)
 		t.Fail()

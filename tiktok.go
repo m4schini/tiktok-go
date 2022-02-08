@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/PuerkitoBio/goquery"
+	"github.com/m4schini/tiktok-go/scraper"
 	"log"
 	"net/http"
 	"strconv"
@@ -101,7 +102,7 @@ func (a *Account) String() string {
 
 // GetLatestVideoURLs Get the latest video urls and views. Returned as to separate lists.
 // Assume that the same index returns the value for the same video in bots slices.
-func (a *Account) GetLatestVideoURLs(scr Scraper) ([]string, []int, error) {
+func (a *Account) GetLatestVideoURLs(scr scraper.Scraper) ([]string, []int, error) {
 	// extract rendered html from chromedp
 	html, err := scr.HTML(a.URL())
 	if err != nil {
@@ -142,7 +143,7 @@ func (a *Account) GetLatestVideoURLs(scr Scraper) ([]string, []int, error) {
 }
 
 // GetAccountByUsername TODO test what happens for user that doesn't exist
-func GetAccountByUsername(scr Scraper, username string) (*Account, error) {
+func GetAccountByUsername(scr scraper.Scraper, username string) (*Account, error) {
 
 	account := Account{
 		Username: username,
@@ -236,11 +237,11 @@ func (p Video) GetTags() []string {
 	return matches
 }
 
-func GetVideo(scr Scraper, username, id string) (*Video, error) {
+func GetVideo(scr scraper.Scraper, username, id string) (*Video, error) {
 	return GetVideoByUrl(scr, fmt.Sprintf(urlFormatPost, username, id))
 }
 
-func GetVideoByUrl(scr Scraper, url string) (*Video, error) {
+func GetVideoByUrl(scr scraper.Scraper, url string) (*Video, error) {
 	var err error
 
 	var username string
