@@ -6,7 +6,7 @@ import (
 )
 
 func TestGetter_Text(t *testing.T) {
-	getter, err := NewTorGetter()
+	getter, err := NewTorGetter("127.0.0.1", 9050)
 	if err != nil {
 		t.Log(err)
 		t.Fail()
