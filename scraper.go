@@ -1,11 +1,11 @@
-package scraper
+package tiktok_go
 
 import (
 	"time"
 )
 
 const (
-	scraperContextTimeout = 20 * time.Second
+	ScraperContextTimeout = 30 * time.Second
 )
 
 type Scraper interface {
