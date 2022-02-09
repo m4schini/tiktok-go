@@ -67,6 +67,22 @@ func ToAccountURL(username string) string {
 	return fmt.Sprintf(urlFormatUser, username)
 }
 
+func ExtractUsernameAndId(url string) (string, string) {
+	var username string
+	var id string
+
+	parts := strings.Split(url, "/")
+	if len(parts) == 4 {
+		username = parts[1][1:len(parts[1])]
+		id = parts[3]
+	} else {
+		username = parts[3][1:len(parts[3])]
+		id = parts[5]
+	}
+
+	return username, id
+}
+
 type Account struct {
 	Username    string
 	DisplayName string
@@ -243,17 +259,7 @@ func GetVideo(scr Scraper, username, id string) (*Video, error) {
 func GetVideoByUrl(scr Scraper, url string) (*Video, error) {
 	var err error
 
-	var username string
-	var id string
-
-	parts := strings.Split(url, "/")
-	if len(parts) == 4 {
-		username = parts[1][1:len(parts[1])]
-		id = parts[3]
-	} else {
-		username = parts[3][1:len(parts[3])]
-		id = parts[5]
-	}
+	username, id := ExtractUsernameAndId(url)
 
 	post := Video{
 		URL:      url,
@@ -262,22 +268,22 @@ func GetVideoByUrl(scr Scraper, url string) (*Video, error) {
 	}
 
 	likeCountText, err := scr.Text(url, selPostLikeCount)
-	post.LikeCount = toNumber(likeCountText)
 	if err != nil {
 		return nil, err
 	}
+	post.LikeCount = toNumber(likeCountText)
 
 	commentCountText, err := scr.Text(url, selPostCommentCount)
-	post.CommentCount = toNumber(commentCountText)
 	if err != nil {
 		return nil, err
 	}
+	post.CommentCount = toNumber(commentCountText)
 
 	shareCountText, err := scr.Text(url, selPostShareCount)
-	post.ShareCount = toNumber(shareCountText)
 	if err != nil {
 		return nil, err
 	}
+	post.ShareCount = toNumber(shareCountText)
 
 	post.DescriptionHTML, err = scr.InnerHTML(url, selPostDescription)
 	if err != nil {

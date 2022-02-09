@@ -3,13 +3,15 @@ package scraper
 import (
 	"errors"
 	"github.com/PuerkitoBio/goquery"
+	"log"
 	"net/http"
 	"strconv"
 )
 
 const (
-	userAgent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/96.0.4664.110 Safari/537.36"
-	referer   = "https://www.tiktok.com/"
+	userAgent  = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/96.0.4664.110 Safari/537.36"
+	accept     = "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8"
+	acceptLang = "en-US,en;q=0.5"
 )
 
 type httpScraper struct {
@@ -38,8 +40,10 @@ func (g *httpScraper) getDoc(url string) (*goquery.Document, error) {
 		return nil, err
 	}
 
-	req.Header.Set("user-agent", userAgent)
-	req.Header.Set("referer", referer)
+	req.Header.Set("User-Agent", userAgent)
+	req.Header.Set("Accept", accept)
+	req.Header.Set("Accept-Language", acceptLang)
+	log.Println(req.Header)
 
 	resp, err := g.client.Get(url)
 	if err != nil {
@@ -65,6 +69,8 @@ func (g *httpScraper) Text(url string, selector interface{}) (string, error) {
 	if err != nil {
 		return "", err
 	}
+
+	log.Println(doc.Html())
 
 	str, ok := selector.(string)
 	if !ok {

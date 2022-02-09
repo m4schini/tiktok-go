@@ -7,23 +7,29 @@ import (
 )
 
 func TestChromedpScraper_Text(t *testing.T) {
-	s, err := NewChromedpScraper()
+	//http://gabenewell.org/
+	scr, err := NewChromedpScraper()
 	if err != nil {
 		t.Log(err)
 		t.Fail()
 	}
 
-	actual, err := s.Text("https://ankiweb.net/account/login", "main.container > h1:nth-child(1)")
+	text, err := scr.Text("http://gabenewell.org/", ".run")
 	if err != nil {
 		t.Log(err)
 		t.Fail()
 	}
 
-	expected := "Log in"
-	if actual != expected {
-		t.Logf("Expected: %s| Got: %s\n", expected, actual)
+	t.Log(text)
+
+	text, err = scr.Text("https://www.tiktok.com/@krawallklara/video/7062067366166891781",
+		"[data-e2e=\"share-count\"]")
+	if err != nil {
+		t.Log(err)
 		t.Fail()
 	}
+
+	t.Log(text)
 }
 
 func TestChromedpScraper_Screenshot(t *testing.T) {
