@@ -9,9 +9,9 @@ import (
 )
 
 const (
-	userAgent  = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/96.0.4664.110 Safari/537.36"
-	accept     = "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8"
-	acceptLang = "en-US,en;q=0.5"
+	HttpHeaderUserAgent  = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/96.0.4664.110 Safari/537.36"
+	HttpHeaderAccept     = "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8"
+	HttpHeaderAcceptLang = "en-US,en;q=0.5"
 )
 
 type httpScraper struct {
@@ -40,9 +40,9 @@ func (g *httpScraper) getDoc(url string) (*goquery.Document, error) {
 		return nil, err
 	}
 
-	req.Header.Set("User-Agent", userAgent)
-	req.Header.Set("Accept", accept)
-	req.Header.Set("Accept-Language", acceptLang)
+	req.Header.Set("User-Agent", HttpHeaderUserAgent)
+	req.Header.Set("Accept", HttpHeaderAccept)
+	req.Header.Set("Accept-Language", HttpHeaderAcceptLang)
 	log.Println(req.Header)
 
 	resp, err := g.client.Get(url)

@@ -118,6 +118,7 @@ func (a *Account) String() string {
 // GetLatestVideoURLs Get the latest video urls and views. Returned as to separate lists.
 // Assume that the same index returns the value for the same video in bots slices.
 func (a *Account) GetLatestVideoURLs(scr Scraper) ([]string, []int, error) {
+
 	// extract rendered html from chromedp
 	html, err := scr.HTML(a.URL())
 	if err != nil {
@@ -207,6 +208,8 @@ func GetAccountByUsername(scr Scraper, username string) (*Account, error) {
 }
 
 type Video struct {
+	Available bool
+
 	URL       string
 	ID        string
 	Username  string
@@ -261,10 +264,36 @@ func GetVideoByUrl(scr Scraper, url string) (*Video, error) {
 
 	username, id := ExtractUsernameAndId(url)
 
+	req, err := http.NewRequest("GET", url, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Set("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/96.0.4664.110 Safari/537.36")
+	req.Header.Set("Accept", "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8")
+	req.Header.Set("Accept-Language", "en-US,en;q=0.5")
+	log.Println(req.Header)
+
+	hc := http.Client{}
+	response, err := hc.Do(req)
+	if err != nil {
+		return nil, err
+	}
+
+	if response.StatusCode != 200 {
+		return &Video{
+			URL:       url,
+			ID:        id,
+			Username:  username,
+			Available: false,
+		}, nil
+	}
+
 	post := Video{
-		URL:      url,
-		ID:       id,
-		Username: username,
+		URL:       url,
+		ID:        id,
+		Username:  username,
+		Available: true,
 	}
 
 	likeCountText, err := scr.Text(url, selPostLikeCount)
