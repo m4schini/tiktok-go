@@ -36,6 +36,25 @@ const (
 	selPostTimestamp    = "[data-e2e=\"browser-nickname\"]"
 )
 
+func CheckUrl(url string) int {
+	req, err := http.NewRequest("GET", url, nil)
+	if err != nil {
+		return -1
+	}
+
+	req.Header.Set("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/96.0.4664.110 Safari/537.36")
+	req.Header.Set("Accept", "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8")
+	req.Header.Set("Accept-Language", "en-US,en;q=0.5")
+
+	hc := http.Client{}
+	response, err := hc.Do(req)
+	if err != nil {
+		return -1
+	}
+
+	return response.StatusCode
+}
+
 func toNumber(in string) int {
 	if in == "" {
 		return -1
@@ -168,11 +187,7 @@ func GetAccountByUsername(scr Scraper, username string) (*Account, error) {
 	var err error
 	url := account.URL()
 
-	response, err := http.Get(url)
-	if err != nil {
-		return nil, err
-	}
-	if response.StatusCode == 404 {
+	if CheckUrl(url) == 404 {
 		return nil, errors.New("account doesn't exist")
 	}
 
@@ -264,23 +279,7 @@ func GetVideoByUrl(scr Scraper, url string) (*Video, error) {
 
 	username, id := ExtractUsernameAndId(url)
 
-	req, err := http.NewRequest("GET", url, nil)
-	if err != nil {
-		return nil, err
-	}
-
-	req.Header.Set("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/96.0.4664.110 Safari/537.36")
-	req.Header.Set("Accept", "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8")
-	req.Header.Set("Accept-Language", "en-US,en;q=0.5")
-	log.Println(req.Header)
-
-	hc := http.Client{}
-	response, err := hc.Do(req)
-	if err != nil {
-		return nil, err
-	}
-
-	if response.StatusCode != 200 {
+	if CheckUrl(url) != 200 {
 		return &Video{
 			URL:       url,
 			ID:        id,
