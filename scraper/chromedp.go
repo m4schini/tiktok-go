@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"github.com/PuerkitoBio/goquery"
 	"github.com/chromedp/chromedp"
-	"github.com/m4schini/tiktok-go"
 	"log"
 	"net/http"
 	"strconv"
@@ -32,7 +31,7 @@ func GetRemoteDebugURL(host string) string {
 }
 
 type ChromedpScraper interface {
-	tiktok_go.Scraper
+	Scraper
 	Screenshot(url string) []byte
 	ScreenshotElement(url string, selector interface{}) []byte
 }
@@ -49,7 +48,7 @@ func NewChromedpScraper() (*chromedpScraper, error) {
 		context.Background(),
 		chromedp.WithLogf(log.Printf),
 	)
-	ctx, cancel := context.WithTimeout(allocCtx, tiktok_go.ScraperContextTimeout)
+	ctx, cancel := context.WithTimeout(allocCtx, ScraperContextTimeout)
 
 	return &chromedpScraper{
 		ctx:             ctx,
@@ -159,6 +158,21 @@ func (c *chromedpScraper) HTML(url string) (string, error) {
 	}
 
 	return out, nil
+}
+
+func (c *chromedpScraper) Attr(url string, selector interface{}, attrName string) (string, error) {
+	_, err := c.setLocation(url)
+	if err != nil {
+		return "", err
+	}
+
+	var value string
+	var ok bool
+	err = chromedp.Run(c.ctx,
+		chromedp.AttributeValue("body", attrName, &value, &ok, chromedp.ByQuery),
+	)
+
+	return value, nil
 }
 
 func (c *chromedpScraper) Nodes(url string, sel interface{}) ([]*goquery.Selection, error) {

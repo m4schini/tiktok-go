@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/PuerkitoBio/goquery"
+	"github.com/m4schini/tiktok-go/scraper"
 	"log"
 	"net/http"
 	"strconv"
@@ -103,12 +104,12 @@ func ExtractUsernameAndId(url string) (string, string) {
 }
 
 type Account struct {
-	Username    string
-	DisplayName string
-	Bio         string
-	Following   int
-	Followers   int
-	Likes       int
+	Username    string `json:"username"`
+	DisplayName string `json:"displayName"`
+	Bio         string `json:"bio"`
+	Following   int    `json:"following"`
+	Followers   int    `json:"followers"`
+	Likes       int    `json:"likes"`
 }
 
 func (a *Account) URL() string {
@@ -136,7 +137,7 @@ func (a *Account) String() string {
 
 // GetLatestVideoURLs Get the latest video urls and views. Returned as to separate lists.
 // Assume that the same index returns the value for the same video in bots slices.
-func (a *Account) GetLatestVideoURLs(scr Scraper) ([]string, []int, error) {
+func (a *Account) GetLatestVideoURLs(scr scraper.Scraper) ([]string, []int, error) {
 
 	// extract rendered html from chromedp
 	html, err := scr.HTML(a.URL())
@@ -178,7 +179,7 @@ func (a *Account) GetLatestVideoURLs(scr Scraper) ([]string, []int, error) {
 }
 
 // GetAccountByUsername TODO test what happens for user that doesn't exist
-func GetAccountByUsername(scr Scraper, username string) (*Account, error) {
+func GetAccountByUsername(scr scraper.Scraper, username string) (*Account, error) {
 
 	account := Account{
 		Username: username,
@@ -223,21 +224,22 @@ func GetAccountByUsername(scr Scraper, username string) (*Account, error) {
 }
 
 type Video struct {
-	Available bool
+	Available bool `json:"available"`
 
-	URL       string
-	ID        string
-	Username  string
-	Timestamp string
+	URL       string `json:"URL"`
+	VideoURL  string `json:"videoURL"`
+	ID        string `json:"ID"`
+	Username  string `json:"username"`
+	Timestamp string `json:"timestamp"`
 
-	ViewCount       int
-	LikeCount       int
-	CommentCount    int
-	ShareCount      int
-	Audio           string
-	VideoLength     int
-	Description     string
-	DescriptionHTML string
+	ViewCount       int    `json:"viewCount"`
+	LikeCount       int    `json:"likeCount"`
+	CommentCount    int    `json:"commentCount"`
+	ShareCount      int    `json:"shareCount"`
+	Audio           string `json:"audio"`
+	VideoLength     int    `json:"videoLength"`
+	Description     string `json:"description"`
+	DescriptionHTML string `json:"descriptionHTML"`
 }
 
 func (p Video) String() string {
@@ -270,11 +272,11 @@ func (p Video) GetTags() []string {
 	return matches
 }
 
-func GetVideo(scr Scraper, username, id string) (*Video, error) {
+func GetVideo(scr scraper.Scraper, username, id string) (*Video, error) {
 	return GetVideoByUrl(scr, fmt.Sprintf(urlFormatPost, username, id))
 }
 
-func GetVideoByUrl(scr Scraper, url string) (*Video, error) {
+func GetVideoByUrl(scr scraper.Scraper, url string) (*Video, error) {
 	var err error
 
 	username, id := ExtractUsernameAndId(url)

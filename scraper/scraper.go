@@ -1,4 +1,4 @@
-package tiktok_go
+package scraper
 
 import (
 	"time"
@@ -13,5 +13,6 @@ type Scraper interface {
 	InnerHTML(url string, selector interface{}) (string, error)
 	Number(url string, selector interface{}) (int, error)
 	HTML(url string) (string, error)
+	Attr(url string, selector interface{}, attrName string) (string, error)
 	Close()
 }
