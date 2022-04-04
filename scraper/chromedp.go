@@ -169,7 +169,7 @@ func (c *chromedpScraper) Attr(url string, selector interface{}, attrName string
 	var value string
 	var ok bool
 	err = chromedp.Run(c.ctx,
-		chromedp.AttributeValue("body", attrName, &value, &ok, chromedp.ByQuery),
+		chromedp.AttributeValue(selector, attrName, &value, &ok, chromedp.ByQuery),
 	)
 
 	return value, nil

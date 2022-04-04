@@ -1,4 +1,4 @@
-package tiktok_go
+package tiktok
 
 import (
 	"bytes"

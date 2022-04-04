@@ -1,24 +1,19 @@
-package tiktok_go
+package tiktok
 
 import (
 	"errors"
 	"fmt"
 	"github.com/PuerkitoBio/goquery"
+	"github.com/m4schini/tiktok-go/model"
 	"github.com/m4schini/tiktok-go/scraper"
+	"github.com/m4schini/tiktok-go/util"
 	"log"
 	"net/http"
-	"strconv"
 	"strings"
-)
-
-import (
-	"regexp"
+	"sync"
 )
 
 const (
-	urlTikTok = `https://www.tiktok.com/`
-	// parameter: 1. Username
-	urlFormatUser = `https://www.tiktok.com/@%s`
 	// parameter: 1. Username, 2. Video Id
 	urlFormatPost = `https://www.tiktok.com/@%s/video/%s`
 
@@ -36,6 +31,33 @@ const (
 	selPostAudio        = "[data-e2e=\"video-music\"]"
 	selPostTimestamp    = "[data-e2e=\"browser-nickname\"]"
 )
+
+type TikTok interface {
+	GetAccount(username string) (*model.Account, error)
+	GetAccountByUrl(url string) (*model.Account, error)
+
+	GetLatestVideos(username string) ([]*model.VideoPreview, error)
+	GetLatestVideosByUrl(url string) ([]*model.VideoPreview, error)
+
+	GetVideo(username, videoId string) (*model.Video, error)
+	GetVideoByUrl(url string) (*model.Video, error)
+}
+
+type tiktok struct {
+	scr scraper.Scraper
+	mu  sync.Mutex
+}
+
+func NewTikTok() *tiktok {
+	t := new(tiktok)
+	scr, err := scraper.NewChromedpScraper()
+	if err != nil {
+		return nil
+	}
+
+	t.scr = scr
+	return t
+}
 
 func CheckUrl(url string) int {
 	req, err := http.NewRequest("GET", url, nil)
@@ -56,93 +78,72 @@ func CheckUrl(url string) int {
 	return response.StatusCode
 }
 
-func toNumber(in string) int {
-	if in == "" {
-		return -1
+//GetAccount
+func (t *tiktok) GetAccount(username string) (*model.Account, error) {
+	t.mu.Lock()
+	defer t.mu.Unlock()
+
+	acc := model.Account{
+		Username: username,
 	}
-	i, err := strconv.Atoi(in)
+
+	var err error
+	url := acc.URL()
+
+	if CheckUrl(url) == 404 {
+		return nil, errors.New("account doesn't exist")
+	}
+
+	acc.DisplayName, err = t.scr.Text(url, selUserDisplayName)
 	if err != nil {
-		unit := rune(in[len(in)-1])
-
-		unitMul := 1.0
-		switch unit {
-		case 'K':
-			unitMul = 1000
-		case 'M':
-			unitMul = 1000000
-		}
-
-		i, err := strconv.ParseFloat(in[0:len(in)-1], 32)
-		if err != nil {
-			return -1
-		}
-
-		return int(i * unitMul)
+		return nil, err
 	}
 
-	return i
-}
-
-func ToAccountURL(username string) string {
-	return fmt.Sprintf(urlFormatUser, username)
-}
-
-func ExtractUsernameAndId(url string) (string, string) {
-	var username string
-	var id string
-
-	parts := strings.Split(url, "/")
-	if len(parts) == 4 {
-		username = parts[1][1:len(parts[1])]
-		id = parts[3]
-	} else {
-		username = parts[3][1:len(parts[3])]
-		id = parts[5]
+	acc.Bio, err = t.scr.Text(url, selUserBio)
+	if err != nil {
+		return nil, err
 	}
 
-	return username, id
-}
-
-type Account struct {
-	Username    string `json:"username"`
-	DisplayName string `json:"displayName"`
-	Bio         string `json:"bio"`
-	Following   int    `json:"following"`
-	Followers   int    `json:"followers"`
-	Likes       int    `json:"likes"`
-}
-
-func (a *Account) URL() string {
-	if a.Username == "" {
-		return urlTikTok
+	followingText, err := t.scr.Text(url, selUserFollowingCount)
+	if err != nil {
+		return nil, err
 	}
-	return ToAccountURL(a.Username)
+	acc.Following = util.ToNumber(followingText)
+
+	followersText, err := t.scr.Text(url, selUserFollowersCount)
+	if err != nil {
+		return nil, err
+	}
+	acc.Followers = util.ToNumber(followersText)
+
+	likesText, err := t.scr.Text(url, selUserLikesCount)
+	if err != nil {
+		return nil, err
+	}
+	acc.Likes = util.ToNumber(likesText)
+
+	acc.AvatarURL, err = t.scr.Attr(url, `div[data-e2e="user-page"] span img`, "src")
+	if err != nil {
+		return nil, err
+	}
+
+	return &acc, nil
 }
 
-func (a *Account) String() string {
-	rx := regexp.MustCompile("\\n")
-	olBio := rx.ReplaceAllString(a.Bio, " \\\\ ")
-
-	s := fmt.Sprintf("[%s|%s] Following: %d Followers: %d Likes: %d | Bio: \"%s\"",
-		a.Username,
-		a.DisplayName,
-		a.Following,
-		a.Followers,
-		a.Likes,
-		olBio,
-	)
-
-	return s
+func (t *tiktok) GetAccountByUrl(url string) (*model.Account, error) {
+	parts := strings.Split(url, "@")
+	if len(parts) != 2 {
+		return nil, errors.New("malformed url. Expected URL format: https://www.tiktok.com/@<username>")
+	}
+	return t.GetAccount(parts[1])
 }
 
-// GetLatestVideoURLs Get the latest video urls and views. Returned as to separate lists.
-// Assume that the same index returns the value for the same video in bots slices.
-func (a *Account) GetLatestVideoURLs(scr scraper.Scraper) ([]string, []int, error) {
+func (t *tiktok) GetLatestVideos(username string) ([]*model.VideoPreview, error) {
 
 	// extract rendered html from chromedp
-	html, err := scr.HTML(a.URL())
+	html, err := t.scr.HTML(model.ToAccountURL(username))
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 
 	// Create goquery html doc from html
@@ -151,8 +152,8 @@ func (a *Account) GetLatestVideoURLs(scr scraper.Scraper) ([]string, []int, erro
 		log.Fatal(err)
 	}
 
-	// extract video urls
-	urls := make([]string, 0)
+	// extract video vids
+	vids := make([]*model.VideoPreview, 0)
 	doc.Find("a").Each(func(i int, s *goquery.Selection) {
 		// For each item found, get the title
 		t, o := s.Attr("href")
@@ -161,128 +162,49 @@ func (a *Account) GetLatestVideoURLs(scr scraper.Scraper) ([]string, []int, erro
 		// update: also check for "tiktok", to be sure we got an absolute and not a relative url
 		// (also to avoid duplication)
 		if o && strings.Contains(t, "video") && strings.Contains(t, "http") {
-			urls = append(urls, t)
+			vids = append(vids, &model.VideoPreview{
+				URL: t,
+			})
 		}
 	})
 
 	// extract video views
-	views := make([]int, 0)
+	l := len(vids)
 	doc.Find("[data-e2e=\"video-views\"]").Each(func(i int, s *goquery.Selection) {
 		// For each item found, get the title
 		t := s.Text()
 		//fmt.Printf("%d: %d %s\n", i, o, t)
 
-		views = append(views, toNumber(t))
+		if i >= 0 && i < l {
+			vids[i].Views = util.ToNumber(t)
+		}
 	})
 
-	return urls, views, nil
+	return vids, nil
 }
 
-// GetAccountByUsername TODO test what happens for user that doesn't exist
-func GetAccountByUsername(scr scraper.Scraper, username string) (*Account, error) {
-
-	account := Account{
-		Username: username,
+func (t *tiktok) GetLatestVideosByUrl(url string) ([]*model.VideoPreview, error) {
+	parts := strings.Split(url, "@")
+	if len(parts) != 2 {
+		return nil, errors.New("malformed url. Expected URL format: https://www.tiktok.com/@<username>")
 	}
+	return t.GetLatestVideos("")
+}
+
+func (t *tiktok) GetVideo(username, videoId string) (*model.Video, error) {
+	return t.GetVideoByUrl(fmt.Sprintf(urlFormatPost, username, videoId))
+}
+
+func (t *tiktok) GetVideoByUrl(url string) (*model.Video, error) {
+	t.mu.Lock()
+	defer t.mu.Unlock()
 
 	var err error
-	url := account.URL()
 
-	if CheckUrl(url) == 404 {
-		return nil, errors.New("account doesn't exist")
-	}
-
-	account.DisplayName, err = scr.Text(url, selUserDisplayName)
-	if err != nil {
-		return nil, err
-	}
-
-	account.Bio, err = scr.Text(url, selUserBio)
-	if err != nil {
-		return nil, err
-	}
-
-	followingText, err := scr.Text(url, selUserFollowingCount)
-	account.Following = toNumber(followingText)
-	if err != nil {
-		return nil, err
-	}
-
-	followersText, err := scr.Text(url, selUserFollowersCount)
-	account.Followers = toNumber(followersText)
-	if err != nil {
-		return nil, err
-	}
-
-	likesText, err := scr.Text(url, selUserLikesCount)
-	account.Likes = toNumber(likesText)
-	if err != nil {
-		return nil, err
-	}
-
-	return &account, nil
-}
-
-type Video struct {
-	Available bool `json:"available"`
-
-	URL       string `json:"URL"`
-	VideoURL  string `json:"videoURL"`
-	ID        string `json:"ID"`
-	Username  string `json:"username"`
-	Timestamp string `json:"timestamp"`
-
-	ViewCount       int    `json:"viewCount"`
-	LikeCount       int    `json:"likeCount"`
-	CommentCount    int    `json:"commentCount"`
-	ShareCount      int    `json:"shareCount"`
-	Audio           string `json:"audio"`
-	VideoLength     int    `json:"videoLength"`
-	Description     string `json:"description"`
-	DescriptionHTML string `json:"descriptionHTML"`
-}
-
-func (p Video) String() string {
-	rx := regexp.MustCompile("\\n")
-	olDesc := rx.ReplaceAllString(p.Description, " \\\\ ")
-
-	s := fmt.Sprintf("[%s|%s] Likes: %d Comments: %d Shares: %d | Desc: \"%s\"",
-		p.Username,
-		p.ID,
-		p.LikeCount,
-		p.CommentCount,
-		p.ShareCount,
-		olDesc,
-	)
-
-	return s
-}
-
-func (p Video) GetMentions() []string {
-	r := regexp.MustCompile(`/@[^/"]+`)
-	matches := r.FindAllString(p.DescriptionHTML, -1)
-
-	return matches
-}
-
-func (p Video) GetTags() []string {
-	r := regexp.MustCompile(`/tag/\w+`)
-	matches := r.FindAllString(p.DescriptionHTML, -1)
-
-	return matches
-}
-
-func GetVideo(scr scraper.Scraper, username, id string) (*Video, error) {
-	return GetVideoByUrl(scr, fmt.Sprintf(urlFormatPost, username, id))
-}
-
-func GetVideoByUrl(scr scraper.Scraper, url string) (*Video, error) {
-	var err error
-
-	username, id := ExtractUsernameAndId(url)
+	username, id := util.ExtractUsernameAndId(url)
 
 	if CheckUrl(url) != 200 {
-		return &Video{
+		return &model.Video{
 			URL:       url,
 			ID:        id,
 			Username:  username,
@@ -290,42 +212,52 @@ func GetVideoByUrl(scr scraper.Scraper, url string) (*Video, error) {
 		}, nil
 	}
 
-	post := Video{
+	post := model.Video{
 		URL:       url,
 		ID:        id,
 		Username:  username,
 		Available: true,
 	}
 
-	likeCountText, err := scr.Text(url, selPostLikeCount)
+	likeCountText, err := t.scr.Text(url, selPostLikeCount)
 	if err != nil {
 		return nil, err
 	}
-	post.LikeCount = toNumber(likeCountText)
+	post.Likes = util.ToNumber(likeCountText)
 
-	commentCountText, err := scr.Text(url, selPostCommentCount)
+	commentCountText, err := t.scr.Text(url, selPostCommentCount)
 	if err != nil {
 		return nil, err
 	}
-	post.CommentCount = toNumber(commentCountText)
+	post.Comments = util.ToNumber(commentCountText)
 
-	shareCountText, err := scr.Text(url, selPostShareCount)
+	shareCountText, err := t.scr.Text(url, selPostShareCount)
 	if err != nil {
 		return nil, err
 	}
-	post.ShareCount = toNumber(shareCountText)
+	post.Shares = util.ToNumber(shareCountText)
 
-	post.DescriptionHTML, err = scr.InnerHTML(url, selPostDescription)
-	if err != nil {
-		return nil, err
-	}
-
-	post.Description, err = scr.Text(url, selPostDescription)
+	post.DescriptionHTML, err = t.scr.InnerHTML(url, selPostDescription)
 	if err != nil {
 		return nil, err
 	}
 
-	post.Audio, err = scr.Text(url, selPostAudio)
+	post.Description, err = t.scr.Text(url, selPostDescription)
+	if err != nil {
+		return nil, err
+	}
+
+	post.Audio, err = t.scr.Text(url, selPostAudio)
+	if err != nil {
+		return nil, err
+	}
+
+	post.VideoURL, err = t.scr.Attr(url, "video", "src")
+	if err != nil {
+		return nil, err
+	}
+
+	post.ThumbnailURL, err = t.scr.Attr(url, `div[data-e2e="feed-video"] img`, "src")
 	if err != nil {
 		return nil, err
 	}
