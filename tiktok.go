@@ -44,18 +44,11 @@ type TikTok interface {
 }
 
 type tiktok struct {
-	scr scraper.Scraper
-	mu  sync.Mutex
+	mu sync.Mutex
 }
 
 func NewTikTok() *tiktok {
 	t := new(tiktok)
-	scr, err := scraper.NewChromedpScraper()
-	if err != nil {
-		return nil
-	}
-
-	t.scr = scr
 	return t
 }
 
@@ -80,49 +73,50 @@ func CheckUrl(url string) int {
 
 //GetAccount
 func (t *tiktok) GetAccount(username string) (*model.Account, error) {
-	t.mu.Lock()
-	defer t.mu.Unlock()
+	scr, err := scraper.NewChromedpScraper()
+	if err != nil {
+		return nil, err
+	}
+	defer scr.Close()
 
 	acc := model.Account{
 		Username: username,
 	}
-
-	var err error
 	url := acc.URL()
 
 	if CheckUrl(url) == 404 {
 		return nil, errors.New("account doesn't exist")
 	}
 
-	acc.DisplayName, err = t.scr.Text(url, selUserDisplayName)
+	acc.DisplayName, err = scr.Text(url, selUserDisplayName)
 	if err != nil {
 		return nil, err
 	}
 
-	acc.Bio, err = t.scr.Text(url, selUserBio)
+	acc.Bio, err = scr.Text(url, selUserBio)
 	if err != nil {
 		return nil, err
 	}
 
-	followingText, err := t.scr.Text(url, selUserFollowingCount)
+	followingText, err := scr.Text(url, selUserFollowingCount)
 	if err != nil {
 		return nil, err
 	}
 	acc.Following = util.ToNumber(followingText)
 
-	followersText, err := t.scr.Text(url, selUserFollowersCount)
+	followersText, err := scr.Text(url, selUserFollowersCount)
 	if err != nil {
 		return nil, err
 	}
 	acc.Followers = util.ToNumber(followersText)
 
-	likesText, err := t.scr.Text(url, selUserLikesCount)
+	likesText, err := scr.Text(url, selUserLikesCount)
 	if err != nil {
 		return nil, err
 	}
 	acc.Likes = util.ToNumber(likesText)
 
-	acc.AvatarURL, err = t.scr.Attr(url, `div[data-e2e="user-page"] span img`, "src")
+	acc.AvatarURL, err = scr.Attr(url, `div[data-e2e="user-page"] span img`, "src")
 	if err != nil {
 		return nil, err
 	}
@@ -139,9 +133,14 @@ func (t *tiktok) GetAccountByUrl(url string) (*model.Account, error) {
 }
 
 func (t *tiktok) GetLatestVideos(username string) ([]*model.VideoPreview, error) {
+	scr, err := scraper.NewChromedpScraper()
+	if err != nil {
+		return nil, err
+	}
+	defer scr.Close()
 
 	// extract rendered html from chromedp
-	html, err := t.scr.HTML(model.ToAccountURL(username))
+	html, err := scr.HTML(model.ToAccountURL(username))
 	if err != nil {
 		return nil, err
 	}
@@ -196,10 +195,11 @@ func (t *tiktok) GetVideo(username, videoId string) (*model.Video, error) {
 }
 
 func (t *tiktok) GetVideoByUrl(url string) (*model.Video, error) {
-	t.mu.Lock()
-	defer t.mu.Unlock()
-
-	var err error
+	scr, err := scraper.NewChromedpScraper()
+	if err != nil {
+		return nil, err
+	}
+	defer scr.Close()
 
 	username, id := util.ExtractUsernameAndId(url)
 
@@ -219,45 +219,45 @@ func (t *tiktok) GetVideoByUrl(url string) (*model.Video, error) {
 		Available: true,
 	}
 
-	likeCountText, err := t.scr.Text(url, selPostLikeCount)
+	likeCountText, err := scr.Text(url, selPostLikeCount)
 	if err != nil {
 		return nil, err
 	}
 	post.Likes = util.ToNumber(likeCountText)
 
-	commentCountText, err := t.scr.Text(url, selPostCommentCount)
+	commentCountText, err := scr.Text(url, selPostCommentCount)
 	if err != nil {
 		return nil, err
 	}
 	post.Comments = util.ToNumber(commentCountText)
 
-	shareCountText, err := t.scr.Text(url, selPostShareCount)
+	shareCountText, err := scr.Text(url, selPostShareCount)
 	if err != nil {
 		return nil, err
 	}
 	post.Shares = util.ToNumber(shareCountText)
 
-	post.DescriptionHTML, err = t.scr.InnerHTML(url, selPostDescription)
+	post.DescriptionHTML, err = scr.InnerHTML(url, selPostDescription)
 	if err != nil {
 		return nil, err
 	}
 
-	post.Description, err = t.scr.Text(url, selPostDescription)
+	post.Description, err = scr.Text(url, selPostDescription)
 	if err != nil {
 		return nil, err
 	}
 
-	post.Audio, err = t.scr.Text(url, selPostAudio)
+	post.Audio, err = scr.Text(url, selPostAudio)
 	if err != nil {
 		return nil, err
 	}
 
-	post.VideoURL, err = t.scr.Attr(url, "video", "src")
+	post.VideoURL, err = scr.Attr(url, "video", "src")
 	if err != nil {
 		return nil, err
 	}
 
-	post.ThumbnailURL, err = t.scr.Attr(url, `div[data-e2e="feed-video"] img`, "src")
+	post.ThumbnailURL, err = scr.Attr(url, `div[data-e2e="feed-video"] img`, "src")
 	if err != nil {
 		return nil, err
 	}

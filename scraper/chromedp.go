@@ -37,24 +37,23 @@ type ChromedpScraper interface {
 }
 
 type chromedpScraper struct {
-	ctxF            func() (context.Context, context.CancelFunc)
-	close           func()
-	renewFunc       func() (ctx context.Context, cancelFunc context.CancelFunc)
+	chromedpCtx     context.Context
+	closeF          func()
 	currentLocation string
 }
 
 func NewChromedpScraper() (*chromedpScraper, error) {
-	ctxF := func() (context.Context, context.CancelFunc) {
-		allocCtx, _ := chromedp.NewContext(
-			context.Background(),
-			chromedp.WithLogf(log.Printf),
-		)
-
-		return context.WithTimeout(allocCtx, ScraperContextTimeout)
-	}
+	allocCtx, _ := chromedp.NewContext(
+		context.Background(),
+		chromedp.WithLogf(log.Printf),
+	)
+	ctx, cancel := context.WithTimeout(allocCtx, ScraperContextTimeout)
 
 	return &chromedpScraper{
-		ctxF:            ctxF,
+		chromedpCtx: ctx,
+		closeF: func() {
+			cancel()
+		},
 		currentLocation: "",
 	}, nil
 }
@@ -76,12 +75,9 @@ func NewChromedpScraper() (*chromedpScraper, error) {
 
 func (c *chromedpScraper) setLocation(location string) (bool, error) {
 	if c.currentLocation != location {
-		ctx, cancel := c.ctxF()
-
-		err := chromedp.Run(ctx,
+		err := chromedp.Run(c.chromedpCtx,
 			chromedp.Navigate(location),
 		)
-		cancel()
 		if err != nil {
 			return false, err
 		}
@@ -100,11 +96,9 @@ func (c *chromedpScraper) Text(url string, selector interface{}) (string, error)
 	}
 
 	var out string
-	ctx, cancel := c.ctxF()
-	err = chromedp.Run(ctx,
+	err = chromedp.Run(c.chromedpCtx,
 		chromedp.Text(selector, &out),
 	)
-	cancel()
 	if err != nil {
 		return "nil", err
 	}
@@ -119,11 +113,9 @@ func (c *chromedpScraper) InnerHTML(url string, selector interface{}) (string, e
 	}
 
 	var out string
-	ctx, cancel := c.ctxF()
-	err = chromedp.Run(ctx,
+	err = chromedp.Run(c.chromedpCtx,
 		chromedp.InnerHTML(selector, &out),
 	)
-	cancel()
 	if err != nil {
 		return "nil", err
 	}
@@ -157,11 +149,9 @@ func (c *chromedpScraper) HTML(url string) (string, error) {
 	}
 
 	var out string
-	ctx, cancel := c.ctxF()
-	err = chromedp.Run(ctx,
+	err = chromedp.Run(c.chromedpCtx,
 		chromedp.OuterHTML("body", &out, chromedp.ByQuery),
 	)
-	cancel()
 
 	if err != nil {
 		return "<html></html>", err
@@ -178,11 +168,9 @@ func (c *chromedpScraper) Attr(url string, selector interface{}, attrName string
 
 	var value string
 	var ok bool
-	ctx, cancel := c.ctxF()
-	err = chromedp.Run(ctx,
+	err = chromedp.Run(c.chromedpCtx,
 		chromedp.AttributeValue(selector, attrName, &value, &ok, chromedp.ByQuery),
 	)
-	cancel()
 
 	return value, nil
 }
@@ -215,7 +203,7 @@ func (c *chromedpScraper) Nodes(url string, sel interface{}) ([]*goquery.Selecti
 }
 
 func (c *chromedpScraper) Close() {
-	c.close()
+	c.closeF()
 }
 
 func (c *chromedpScraper) Screenshot(url string) ([]byte, error) {
@@ -225,9 +213,7 @@ func (c *chromedpScraper) Screenshot(url string) ([]byte, error) {
 	}
 	var buffer []byte
 
-	ctx, cancel := c.ctxF()
-	defer cancel()
-	if err := chromedp.Run(ctx, chromedp.FullScreenshot(&buffer, 100)); err != nil {
+	if err := chromedp.Run(c.chromedpCtx, chromedp.FullScreenshot(&buffer, 100)); err != nil {
 		return nil, err
 	}
 
@@ -241,9 +227,7 @@ func (c *chromedpScraper) ScreenshotElement(url string, selector interface{}) ([
 	}
 	var buffer []byte
 
-	ctx, cancel := c.ctxF()
-	defer cancel()
-	if err := chromedp.Run(ctx, chromedp.Screenshot(selector, &buffer)); err != nil {
+	if err := chromedp.Run(c.chromedpCtx, chromedp.Screenshot(selector, &buffer)); err != nil {
 		return nil, err
 	}
 
