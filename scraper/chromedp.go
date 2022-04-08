@@ -37,47 +37,51 @@ type ChromedpScraper interface {
 }
 
 type chromedpScraper struct {
-	ctx             context.Context
+	ctxF            func() (context.Context, context.CancelFunc)
 	close           func()
 	renewFunc       func() (ctx context.Context, cancelFunc context.CancelFunc)
 	currentLocation string
 }
 
 func NewChromedpScraper() (*chromedpScraper, error) {
-	allocCtx, _ := chromedp.NewContext(
-		context.Background(),
-		chromedp.WithLogf(log.Printf),
-	)
-	ctx, cancel := context.WithTimeout(allocCtx, ScraperContextTimeout)
+	ctxF := func() (context.Context, context.CancelFunc) {
+		allocCtx, _ := chromedp.NewContext(
+			context.Background(),
+			chromedp.WithLogf(log.Printf),
+		)
+
+		return context.WithTimeout(allocCtx, ScraperContextTimeout)
+	}
 
 	return &chromedpScraper{
-		ctx:             ctx,
-		close:           cancel,
+		ctxF:            ctxF,
 		currentLocation: "",
 	}, nil
 }
 
-func NewRemoteChromedpScraper(chromedpHost string) (*chromedpScraper, error) {
-	allocCtx, _ := chromedp.NewRemoteAllocator(
-		context.Background(),
-		GetRemoteDebugURL(chromedpHost),
-	)
-
-	ctx, cancel := chromedp.NewContext(allocCtx)
-
-	return &chromedpScraper{
-		ctx:             ctx,
-		close:           cancel,
-		currentLocation: "",
-	}, nil
-}
+//func NewRemoteChromedpScraper(chromedpHost string) (*chromedpScraper, error) {
+//	allocCtx, _ := chromedp.NewRemoteAllocator(
+//		context.Background(),
+//		GetRemoteDebugURL(chromedpHost),
+//	)
+//
+//	ctx, cancel := chromedp.NewContext(allocCtx)
+//
+//	return &chromedpScraper{
+//		ctx:             ctx,
+//		close:           cancel,
+//		currentLocation: "",
+//	}, nil
+//}
 
 func (c *chromedpScraper) setLocation(location string) (bool, error) {
 	if c.currentLocation != location {
+		ctx, cancel := c.ctxF()
 
-		err := chromedp.Run(c.ctx,
+		err := chromedp.Run(ctx,
 			chromedp.Navigate(location),
 		)
+		cancel()
 		if err != nil {
 			return false, err
 		}
@@ -96,9 +100,11 @@ func (c *chromedpScraper) Text(url string, selector interface{}) (string, error)
 	}
 
 	var out string
-	err = chromedp.Run(c.ctx,
+	ctx, cancel := c.ctxF()
+	err = chromedp.Run(ctx,
 		chromedp.Text(selector, &out),
 	)
+	cancel()
 	if err != nil {
 		return "nil", err
 	}
@@ -113,9 +119,11 @@ func (c *chromedpScraper) InnerHTML(url string, selector interface{}) (string, e
 	}
 
 	var out string
-	err = chromedp.Run(c.ctx,
+	ctx, cancel := c.ctxF()
+	err = chromedp.Run(ctx,
 		chromedp.InnerHTML(selector, &out),
 	)
+	cancel()
 	if err != nil {
 		return "nil", err
 	}
@@ -149,9 +157,11 @@ func (c *chromedpScraper) HTML(url string) (string, error) {
 	}
 
 	var out string
-	err = chromedp.Run(c.ctx,
+	ctx, cancel := c.ctxF()
+	err = chromedp.Run(ctx,
 		chromedp.OuterHTML("body", &out, chromedp.ByQuery),
 	)
+	cancel()
 
 	if err != nil {
 		return "<html></html>", err
@@ -168,9 +178,11 @@ func (c *chromedpScraper) Attr(url string, selector interface{}, attrName string
 
 	var value string
 	var ok bool
-	err = chromedp.Run(c.ctx,
+	ctx, cancel := c.ctxF()
+	err = chromedp.Run(ctx,
 		chromedp.AttributeValue(selector, attrName, &value, &ok, chromedp.ByQuery),
 	)
+	cancel()
 
 	return value, nil
 }
@@ -213,7 +225,9 @@ func (c *chromedpScraper) Screenshot(url string) ([]byte, error) {
 	}
 	var buffer []byte
 
-	if err := chromedp.Run(c.ctx, chromedp.FullScreenshot(&buffer, 100)); err != nil {
+	ctx, cancel := c.ctxF()
+	defer cancel()
+	if err := chromedp.Run(ctx, chromedp.FullScreenshot(&buffer, 100)); err != nil {
 		return nil, err
 	}
 
@@ -227,23 +241,11 @@ func (c *chromedpScraper) ScreenshotElement(url string, selector interface{}) ([
 	}
 	var buffer []byte
 
-	if err := chromedp.Run(c.ctx, chromedp.Screenshot(selector, &buffer)); err != nil {
+	ctx, cancel := c.ctxF()
+	defer cancel()
+	if err := chromedp.Run(ctx, chromedp.Screenshot(selector, &buffer)); err != nil {
 		return nil, err
 	}
 
 	return buffer, nil
-}
-
-//TODO
-func (c *chromedpScraper) Login(username, password string) error {
-	_, err := c.setLocation("https://www.tiktok.com/")
-	if err != nil {
-		return err
-	}
-
-	chromedp.Run(c.ctx,
-		chromedp.Click("[data-e2e=\"top-login-button\"]"),
-	)
-
-	return nil
 }
