@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"github.com/PuerkitoBio/goquery"
 	"github.com/m4schini/tiktok-go/model"
-	"github.com/m4schini/tiktok-go/scraper"
 	"github.com/m4schini/tiktok-go/util"
 	"log"
 	"net/http"
@@ -73,7 +72,7 @@ func CheckUrl(url string) int {
 
 //GetAccount
 func (t *tiktok) GetAccount(username string) (*model.Account, error) {
-	scr, err := scraper.NewChromedpScraper()
+	scr, err := util.GetScraper()
 	if err != nil {
 		return nil, err
 	}
@@ -133,7 +132,7 @@ func (t *tiktok) GetAccountByUrl(url string) (*model.Account, error) {
 }
 
 func (t *tiktok) GetLatestVideos(username string) ([]*model.VideoPreview, error) {
-	scr, err := scraper.NewChromedpScraper()
+	scr, err := util.GetScraper()
 	if err != nil {
 		return nil, err
 	}
@@ -195,7 +194,7 @@ func (t *tiktok) GetVideo(username, videoId string) (*model.Video, error) {
 }
 
 func (t *tiktok) GetVideoByUrl(url string) (*model.Video, error) {
-	scr, err := scraper.NewChromedpScraper()
+	scr, err := util.GetScraper()
 	if err != nil {
 		return nil, err
 	}

@@ -42,6 +42,30 @@ type chromedpScraper struct {
 	currentLocation string
 }
 
+func NewProxyChromedpScraper(proxyAddr string) (*chromedpScraper, error) {
+	o := append(chromedp.DefaultExecAllocatorOptions[:],
+		//... any options here
+		//"http://username:password@proxyserver.com:31280"
+		chromedp.ProxyServer(proxyAddr),
+	)
+
+	cx, cancelAlloc := chromedp.NewExecAllocator(context.Background(), o...)
+
+	ctx, cancelCtx := chromedp.NewContext(cx)
+
+	ctxWithTimeout, cancelT := context.WithTimeout(ctx, ScraperContextTimeout)
+
+	return &chromedpScraper{
+		chromedpCtx: ctxWithTimeout,
+		closeF: func() {
+			cancelT()
+			cancelCtx()
+			cancelAlloc()
+		},
+		currentLocation: "",
+	}, nil
+}
+
 func NewChromedpScraper() (*chromedpScraper, error) {
 	allocCtx, _ := chromedp.NewContext(
 		context.Background(),

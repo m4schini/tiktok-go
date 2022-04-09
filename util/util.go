@@ -1,6 +1,8 @@
 package util
 
 import (
+	"github.com/m4schini/tiktok-go/scraper"
+	"os"
 	"strconv"
 	"strings"
 )
@@ -46,4 +48,13 @@ func ExtractUsernameAndId(url string) (string, string) {
 	}
 
 	return username, id
+}
+
+func GetScraper() (scraper.Scraper, error) {
+	addr := os.Getenv("TIKTOK_GO_TOR_PROXY_ADDR")
+	if addr == "" {
+		return scraper.NewChromedpScraper()
+	} else {
+		return scraper.NewProxyChromedpScraper(addr)
+	}
 }
