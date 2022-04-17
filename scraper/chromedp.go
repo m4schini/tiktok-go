@@ -53,7 +53,7 @@ func NewProxyChromedpScraper(proxyAddr string) (*chromedpScraper, error) {
 
 	ctx, cancelCtx := chromedp.NewContext(cx)
 
-	ctxWithTimeout, cancelT := context.WithTimeout(ctx, ScraperContextTimeout)
+	ctxWithTimeout, cancelT := context.WithTimeout(ctx, ContextTimeout)
 
 	return &chromedpScraper{
 		chromedpCtx: ctxWithTimeout,
@@ -71,7 +71,7 @@ func NewChromedpScraper() (*chromedpScraper, error) {
 		context.Background(),
 		chromedp.WithLogf(log.Printf),
 	)
-	ctx, cancel := context.WithTimeout(allocCtx, ScraperContextTimeout)
+	ctx, cancel := context.WithTimeout(allocCtx, ContextTimeout)
 
 	return &chromedpScraper{
 		chromedpCtx: ctx,

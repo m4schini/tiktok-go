@@ -5,7 +5,7 @@ import (
 )
 
 const (
-	ScraperContextTimeout = 30 * time.Second
+	ContextTimeout = 30 * time.Second
 )
 
 type Scraper interface {
